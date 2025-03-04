@@ -8,6 +8,8 @@ import glob
 import os
 from tqdm import tqdm
 
+from utils import visualize_tensor
+
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -22,7 +24,7 @@ def show_box(box, ax):
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
 
-data_root = "/Users/hexinyu/PycharmProjects/sjw/layout2adi0907/train"
+data_root = "../sjw/layout2adi0907/train"
 mask_path, ADI_path = data_root + "/layout", data_root + "/ADI"
 seg_data = []
 for mask_image_path in tqdm(glob.glob(mask_path+"/*")):
@@ -62,8 +64,9 @@ for mask_image_path in tqdm(glob.glob(mask_path+"/*")):
 
 from segment_anything import sam_model_registry, SamPredictor
 
-device = "mps:0"
-sam_checkpoint = "checkpoint/sam_vit_b_01ec64.pth"
+device = "cuda:0"
+# sam_checkpoint = "checkpoint/sam_vit_b_01ec64.pth"
+sam_checkpoint = "experiment/ss_pure_contrast_fbase_exp1/epoch1.pth"
 model_type = "vit_b"
 sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
 sam.to(device=device)
@@ -78,7 +81,7 @@ for seg_infor in tqdm(seg_data):
     masks, _, _ = predictor.predict_torch(
         point_coords=None,
         point_labels=None,
-        boxes=transform_boxes,
+        boxes=transform_boxes, #None
         multimask_output=False,
     )
 
@@ -96,7 +99,9 @@ for seg_infor in tqdm(seg_data):
         #print(mask.shape)
         gen_seg_mask[mask.cpu().numpy()[0] == 1] = 255
 
-    data_dir = "./data/train_seg"
+    data_dir = "./dataset/ss_pure_contrast_fbase_exp1"
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
     file_name = seg_infor["file_name"].split('.')[0]
     cv2.imwrite(f"{data_dir}/{file_name}.jpg", gen_seg_mask)
 
